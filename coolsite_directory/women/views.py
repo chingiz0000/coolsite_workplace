@@ -1,16 +1,13 @@
-from typing import Any, Dict
 from django.db.models.query import QuerySet
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse_lazy
 from django.http import HttpResponse, HttpResponseNotFound, Http404
-from django.views.generic import ListView
-from .models import *
-from .forms import *
+from django.views.generic import ListView, DetailView, CreateView
 
-menu = [{'title': "О сайте", 'url_name': 'about'},
-        {'title': "Добавить статью", 'url_name': 'add_page'},
-        {'title': "Обратная связь", 'url_name': 'contact'},
-        {'title': "Войти", 'url_name': 'login'}
-]
+from .forms import *
+from .models import *
+
+
 
 class WomenHome(ListView):
     model = Women
@@ -42,16 +39,29 @@ class WomenHome(ListView):
 def about(request):
     return render(request, 'women/about.html', {'menu': menu, 'title': 'О сайте'})
 
-def addpage(request):
-    if request.method == 'POST':
-        form = AddPostForm(request.POST, request.FILES)
-        if form.is_valid():
-            #print(form.cleaned_data)
-            form.save()
-            return redirect('home')
-    else:
-        form = AddPostForm()
-    return render(request, 'women/addpage.html', {'form': form, 'menu': menu, 'title': 'Добавление статьи'})
+class AddPage(CreateView):
+    form_class = AddPostForm
+    template_name = 'women/addpage.html'
+    success_url = reverse_lazy('home')
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Добавление статьи'
+        context['menu'] = menu
+        return context
+
+# def addpage(request):
+#     if request.method == 'POST':
+#         form = AddPostForm(request.POST, request.FILES)
+#         if form.is_valid():
+#             #print(form.cleaned_data)
+#             form.save()
+#             return redirect('home')
+#     else:
+#         form = AddPostForm()
+#     return render(request, 'women/addpage.html', {'form': form, 'menu': menu, 'title': 'Добавление статьи'})
+
+
 
 def contact(request):
     return HttpResponse("Обратная связь")
@@ -59,16 +69,29 @@ def contact(request):
 def login(request):
     return HttpResponse("Авторизация")
 
-def show_post(request, post_slug):
-    post = get_object_or_404(Women, slug=post_slug)
+# def show_post(request, post_slug):
+#     post = get_object_or_404(Women, slug=post_slug)
     
-    context = {
-        'post': post,
-        'menu': menu,
-        'title': post.title,
-        'cat_selected': post.cat.slug,
-    }
-    return render(request, 'women/post.html', context=context)
+#     context = {
+#         'post': post,
+#         'menu': menu,
+#         'title': post.title,
+#         'cat_selected': post.cat.slug,
+#     }
+#     return render(request, 'women/post.html', context=context)
+
+class ShowPost(DetailView):
+    model = Women
+    template_name = 'women/post.html'
+    slug_url_kwarg = 'post_slug'
+    # pk_url_kwarg = 'post_pk'
+    context_object_name = 'post'
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = context['post']
+        context['menu'] = menu
+        return context
 
 def pageNotFound(request, exception):
     return HttpResponseNotFound('<h1>Страница не найдена</h1>')
